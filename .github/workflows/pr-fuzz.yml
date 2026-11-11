@@ -1,0 +1,40 @@
+name: Fuzz - PR
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'examples/**'
+      - '.github/**'
+
+concurrency:
+  group: pr-fuzz
+  cancel-in-progress: true
+
+jobs:
+  fuzz-pr:
+    name: Fuzz (PR quick run)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version-file: go.mod
+
+      - name: Run quick fuzzers
+        run: |
+          mkdir -p tmp
+          set -o pipefail
+          # Short fuzz-time per function for PR checks: 10s
+          make fuzz FUZZ_TIME=10s | tee tmp/fuzz.log
+        shell: bash
+
+      - name: Upload fuzz logs
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: pr-fuzz-logs
+          path: tmp/fuzz.log
